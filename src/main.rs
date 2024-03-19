@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::PathBuf;
 
+pub(crate) mod objects;
 pub(crate) mod commands;
 
 #[derive(Parser, Debug)]
