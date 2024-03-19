@@ -2,8 +2,8 @@ use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::PathBuf;
 
-pub(crate) mod objects;
 pub(crate) mod commands;
+pub(crate) mod objects;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -28,7 +28,7 @@ enum Command {
         file: PathBuf,
     },
     LsTree {
-        #[clap(short = 'n', long = "name-only")]
+        #[clap(long)]
         name_only: bool,
 
         object_hash: String,

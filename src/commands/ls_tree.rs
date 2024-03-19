@@ -29,14 +29,19 @@ pub(crate) fn invoke(name_only: bool, object_hash: &str) -> anyhow::Result<()> {
                 let sha = hex::encode(sha);
                 size -= 20;
 
-                let t = match mode {
-                    "40000" => "tree",
-                    _ => "blob",
-                };
-
                 match name_only {
                     true => println!("{}", name),
-                    false => println!("{}\t{}\t{}\t{}", mode, t, sha, name),
+                    false => {
+                        let obj_kind = Object::read(&sha)
+                            .with_context(|| {
+                                format!("read object for tree entry {sha}")
+                            })?
+                            .kind;
+                        println!(
+                            "{:0>6} {} {}\t{}",
+                            mode, obj_kind, sha, name
+                        )
+                    }
                 }
             }
         }
