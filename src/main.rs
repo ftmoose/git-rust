@@ -26,6 +26,12 @@ enum Command {
 
         file: PathBuf,
     },
+    LsTree {
+        #[clap(short = 'n', long = "name-only")]
+        name_only: bool,
+
+        object_hash: String,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -49,6 +55,10 @@ fn main() -> anyhow::Result<()> {
         Command::HashObject { write, file } => {
             commands::hash_object::invoke(write, &file)?
         }
+        Command::LsTree {
+            name_only,
+            object_hash,
+        } => commands::ls_tree::invoke(name_only, &object_hash)?,
     }
 
     Ok(())
