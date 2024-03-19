@@ -3,9 +3,8 @@ use clap::{Parser, Subcommand};
 use anyhow::Context;
 use std::ffi::CStr;
 use std::io::prelude::*;
-use std::io::{BufReader};
+use std::io::BufReader;
 use flate2::read::ZlibDecoder;
-
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -44,7 +43,6 @@ fn main() -> anyhow::Result<()> {
             println!("Initialized git directory")
         },
         Command::CatFile { pretty_print, object_hash } => {
-
             anyhow::ensure!(
                 pretty_print,
                 "mode must be given without -p and we don't support mode"
@@ -78,27 +76,25 @@ fn main() -> anyhow::Result<()> {
             };
 
             let size = size
-                .parse::<usize>()
+                .parse::<u64>()
                 .context(".git/objects file header has invalid size: {size}")?;
-            buf.clear();
-            buf.resize(size, 0);
-            z.read_exact(&mut buf)
-                .context(".git/objects file size is not what's expected")?;
-            let n = z
-                .read(&mut [0])
-                .context("validate EOF in .git/objects file")?;
-            anyhow::ensure!(n == 0, ".git/object fileh had {n} trailing bytes");
 
-            let stdout = std::io::stdout();
-            let mut stdout = stdout.lock();
-
+            // NOTE: this won't error if the decompressed file is too long,
+            // but at least not vulnerable to zip bombs
+            let mut z = z.take(size);
             match kind {
-                Kind::Blob => stdout
-                    .write_all(&buf)
-                    .context("write object contents to stdout")?,
+                Kind::Blob => {
+                    let stdout = std::io::stdout();
+                    let mut stdout = stdout.lock();
+                    let n = std::io::copy(&mut z, &mut stdout)
+                        .context("write file .git/objects file to stdout")?;
+                    anyhow::ensure!(n == size, ".git/object size expected {size} but was {n}");
+                }
             }
         }
     }
 
     Ok(())
 }
+
+
