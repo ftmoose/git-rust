@@ -1,10 +1,15 @@
 use std::fs;
+use std::io::SeekFrom;
 use clap::{Parser, Subcommand};
 use anyhow::Context;
+use flate2::Compression;
 use std::ffi::CStr;
 use std::io::prelude::*;
 use std::io::BufReader;
+use std::path::PathBuf;
 use flate2::read::ZlibDecoder;
+use flate2::write::ZlibEncoder;
+use sha1::{Sha1, Digest};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -21,6 +26,12 @@ enum Command {
         pretty_print: bool,
 
         object_hash: String,
+    },
+    HashObject {
+        #[clap(short = 'w')]
+        write: bool,
+
+        file: PathBuf
     }
 }
 
@@ -90,6 +101,30 @@ fn main() -> anyhow::Result<()> {
                         .context("write file .git/objects file to stdout")?;
                     anyhow::ensure!(n == size, ".git/object size expected {size} but was {n}");
                 }
+            }
+        },
+        Command::HashObject { write, file } => {
+            let f = fs::File::open(file)
+                .context("open file")?;
+            let mut f = BufReader::new(f);
+            let mut buf = Vec::new();
+            f.read_to_end(&mut buf)
+                .context("reading file")?;
+            let mut hasher = Sha1::new();
+            hasher.update(buf.clone());
+            let hash = format!("{:x}", hasher.finalize());
+
+            if write {
+                fs::create_dir(format!(".git/objects/{}", &hash[..2]))
+                    .context("creating hash dir")?;
+                let f = fs::File::create(format!(".git/objects/{}/{}", &hash[..2], &hash[2..]))
+                    .context("create file")?;
+
+                let mut encoder = ZlibEncoder::new(f, Compression::default());
+                encoder.write_all(&buf)
+                    .context("writing to file")?;
+
+                encoder.finish().context("closing encoder")?;
             }
         }
     }
